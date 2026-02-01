@@ -1,21 +1,210 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Video Downloader</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Video Downloader</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 50px; }
-        input { padding: 10px; width: 300px; }
-        button { padding: 10px 20px; background: red; color: white; border: none; cursor: pointer; }
+        body {
+            /* ලස්සන Gradient Background එකක් */
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .card-header {
+            background-color: #fff;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 25px;
+        }
+        .btn-primary {
+            background: #764ba2;
+            border: none;
+            transition: 0.3s;
+        }
+        .btn-primary:hover { background: #5a3780; transform: translateY(-2px); }
+        
+        #loading { display: none; }
+        
+        /* Video Section එක එනකොට පොඩි Animation එකක් */
+        #video-section { display: none; animation: fadeIn 0.6s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
-    <h1>🎥 Video Downloader</h1>
-    <form method="POST">
-        <input type="text" name="url" placeholder="Paste Video URL here..." required>
-        <button type="submit">Download</button>
-    </form>
-    {% if message %}
-        <p>{{ message }}</p>
-    {% endif %}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-6 col-md-8">
+            <div class="card">
+                
+                <div class="card-header text-center">
+                    <h2 class="m-0 text-primary fw-bold"><i class="fas fa-cloud-download-alt"></i> Downloader</h2>
+                    <p class="text-muted small mb-0">Download Video & Audio in Best Quality</p>
+                </div>
+
+                <div class="card-body p-4">
+                    
+                    <label class="form-label fw-bold text-secondary">Paste Video URL</label>
+                    <div class="input-group mb-4">
+                        <input type="text" id="url" class="form-control form-control-lg" placeholder="e.g. YouTube, Facebook link...">
+                        <button class="btn btn-primary px-4" onclick="fetchInfo()">
+                            <i class="fas fa-search"></i> Check
+                        </button>
+                    </div>
+
+                    <div id="loading" class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+                        <p class="mt-3 text-muted fw-bold">Searching Video Details...</p>
+                    </div>
+
+                    <div id="video-section">
+                        <div class="text-center mb-4">
+                            <div class="position-relative d-inline-block">
+                                <img id="thumb" src="" class="img-fluid rounded-3 shadow" style="max-height: 220px; width: 100%; object-fit: cover;">
+                                <span class="position-absolute bottom-0 end-0 badge bg-dark m-2 p-2">
+                                    <i class="far fa-clock"></i> <span id="duration"></span>
+                                </span>
+                            </div>
+                            <h5 id="title" class="mt-3 fw-bold text-dark"></h5>
+                        </div>
+
+                        <form action="/download" method="POST" id="downloadForm">
+                            <input type="hidden" name="url" id="hidden-url">
+                            
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-muted">FORMAT</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-file-video"></i></span>
+                                        <select name="format" class="form-select" id="formatSelect" onchange="toggleQuality()">
+                                            <option value="mp4">Video (MP4)</option>
+                                            <option value="mp3">Audio (MP3)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6" id="qualityDiv">
+                                    <label class="form-label fw-bold small text-muted">QUALITY & SIZE</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-sliders-h"></i></span>
+                                        <select name="quality" id="qualitySelect" class="form-select">
+                                            <option value="best">Loading...</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-success w-100 mt-4 py-3 fw-bold shadow-sm" onclick="startDownload()">
+                                <i class="fas fa-download me-2"></i> DOWNLOAD NOW
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+            
+            <div class="text-center mt-4 text-white-50">
+                <small>Powered by Flask & Docker | FFmpeg Enabled</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. Video විස්තර සහ Qualities ලබා ගැනීම
+    function fetchInfo() {
+        let url = document.getElementById('url').value;
+        if (!url) return alert("Please enter a valid URL!");
+
+        // Loading පෙන්වීම
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('video-section').style.display = 'none';
+
+        let formData = new FormData();
+        formData.append('url', url);
+
+        // API Call
+        fetch('/get-info', { method: 'POST', body: formData })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('loading').style.display = 'none';
+            
+            if (data.status === 'success') {
+                // Video විස්තර පෙන්වීම
+                document.getElementById('video-section').style.display = 'block';
+                document.getElementById('title').innerText = data.title;
+                document.getElementById('thumb').src = data.thumbnail;
+                document.getElementById('duration').innerText = data.duration;
+                document.getElementById('hidden-url').value = data.webpage_url;
+
+                // --- Dynamic Quality Dropdown ---
+                let qualitySelect = document.getElementById('qualitySelect');
+                qualitySelect.innerHTML = ""; // පරණ දේවල් මකන්න
+
+                if (data.qualities && data.qualities.length > 0) {
+                    data.qualities.forEach(q => {
+                        let option = document.createElement("option");
+                        option.value = q.value;
+                        // Text එක උදාහරණ: "720p - 24.5 MB"
+                        option.text = `${q.resolution}  ${q.size ? '(' + q.size + ')' : ''}`; 
+                        qualitySelect.appendChild(option);
+                    });
+                } else {
+                    // Qualities හොයාගන්න බැරි නම්
+                    let option = document.createElement("option");
+                    option.value = "best";
+                    option.text = "Best Available Quality";
+                    qualitySelect.appendChild(option);
+                }
+                
+                // මුලින්ම MP4 තෝරා ඇති බව තහවුරු කරන්න
+                document.getElementById('formatSelect').value = 'mp4';
+                toggleQuality();
+
+            } else {
+                alert("Error: " + data.message);
+            }
+        })
+        .catch(e => {
+            document.getElementById('loading').style.display = 'none';
+            alert("Connection Error! Please check your server.");
+            console.error(e);
+        });
+    }
+
+    // 2. MP3 තෝරද්දී Quality Dropdown එක සැඟවීම
+    function toggleQuality() {
+        let format = document.getElementById('formatSelect').value;
+        let qualityDiv = document.getElementById('qualityDiv');
+        
+        if (format === 'mp3') {
+            qualityDiv.style.display = 'none'; // MP3 නම් Quality පෙන්නලා වැඩක් නෑ
+        } else {
+            qualityDiv.style.display = 'block'; // Video නම් Quality ඕනේ
+        }
+    }
+
+    // 3. Download Button Feedback
+    function startDownload() {
+        // පොඩි වෙලාවකින් Alert එකක්
+        setTimeout(() => {
+            alert("Download Started! Please wait while the server processes your file.");
+        }, 500);
+    }
+</script>
+
 </body>
 </html>

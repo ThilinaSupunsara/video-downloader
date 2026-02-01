@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Downloader</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 50px; }
+        input { padding: 10px; width: 300px; }
+        button { padding: 10px 20px; background: red; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🎥 Video Downloader</h1>
+    <form method="POST">
+        <input type="text" name="url" placeholder="Paste Video URL here..." required>
+        <button type="submit">Download</button>
+    </form>
+    {% if message %}
+        <p>{{ message }}</p>
+    {% endif %}
+</body>
+</html>

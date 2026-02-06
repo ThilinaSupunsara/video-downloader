@@ -2,7 +2,24 @@ from flask import Flask, render_template, request, jsonify, send_file, after_thi
 import os
 from backend import get_video_data, download_media
 
+import time
+import glob
+
 app = Flask(__name__)
+
+DOWNLOAD_FOLDER = 'downloads'
+
+def cleanup_old_files():
+    """ පැයකට වඩා පැරණි files මැකීම (Cleanup Function) """
+    try:
+        now = time.time()
+        for f in glob.glob(os.path.join(DOWNLOAD_FOLDER, "*")):
+            if os.path.isfile(f):
+                if os.stat(f).st_mtime < now - 3600: # 3600 seconds = 1 hour
+                    os.remove(f)
+                    print(f"Deleted old file: {f}")
+    except Exception as e:
+        print(f"Cleanup error: {e}")
 
 @app.route('/')
 def home():
@@ -17,9 +34,15 @@ def get_info():
 
 @app.route('/download', methods=['POST'])
 def download():
+    # පරණ files මකන්න
+    cleanup_old_files()
+
     url = request.form.get('url')
     format_type = request.form.get('format')
     quality = request.form.get('quality')
+
+    if not url:
+        return render_template('index.html', error="URL is missing!")
 
     result = download_media(url, format_type, quality)
 
@@ -38,8 +61,11 @@ def download():
 
         return send_file(file_path, as_attachment=True)
     else:
-        return f"Error: {result['message']}"
+        # Error එකක් ආවොත් ලස්සනට පෙන්වන්න
+        return render_template('index.html', error=result['message'])
 
 if __name__ == '__main__':
     # Docker වල වැඩ කරන්න host='0.0.0.0' අනිවාර්යයි
+    if not os.path.exists(DOWNLOAD_FOLDER):
+        os.makedirs(DOWNLOAD_FOLDER)
     app.run(host='0.0.0.0', port=5000, debug=True)

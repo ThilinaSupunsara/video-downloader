@@ -60,11 +60,6 @@ def get_video_data(video_url):
         return {"status": "error", "message": str(e)}
 
 def download_media(video_url, format_type='mp4', quality='best'):
-    # ... (Download function එක කලින් එකමයි, වෙනසක් නැහැ) ...
-    # පහසුව සදහා කලින් දුන්න "Error Fixed Version" එකේ download_media කොටස මෙතනට දාන්න.
-    # (මම කෝඩ් එක දිග වැඩි වෙන නිසා download_media එක ආයේ දැම්මේ නෑ, ඔයා කලින් එකම තියාගන්න)
-    
-    # --- කලින් දුන්න download_media function එක මෙතන තියෙන්න ඕනේ ---
     try:
         if not os.path.exists(DOWNLOAD_FOLDER):
             os.makedirs(DOWNLOAD_FOLDER)
@@ -76,6 +71,7 @@ def download_media(video_url, format_type='mp4', quality='best'):
             'outtmpl': output_template,
             'quiet': True,
             'restrictfilenames': True,
+            'socket_timeout': 30, # Timeout to prevent hanging
         }
 
         if format_type == 'mp3':
@@ -99,8 +95,11 @@ def download_media(video_url, format_type='mp4', quality='best'):
             })
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(video_url, download=True)
-            filename = ydl.prepare_filename(info)
+            try:
+                info = ydl.extract_info(video_url, download=True)
+                filename = ydl.prepare_filename(info)
+            except Exception as dl_error:
+                return {"status": "error", "message": f"Download failed: {str(dl_error)}"}
 
             if format_type == 'mp3':
                 pre, _ = os.path.splitext(filename)
@@ -112,6 +111,9 @@ def download_media(video_url, format_type='mp4', quality='best'):
             if not os.path.exists(final_filename):
                 if os.path.exists(filename):
                      final_filename = filename
+            
+            if not os.path.exists(final_filename):
+                 return {"status": "error", "message": "File processing failed."}
 
             return {"status": "success", "file_path": final_filename}
 

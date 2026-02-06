@@ -92,6 +92,7 @@ def download_media(video_url, format_type='mp4', quality='best'):
             ydl_opts.update({
                 'format': format_str,
                 'merge_output_format': 'mp4',
+                'postprocessor_args': {'merger': ['-c:v', 'copy', '-c:a', 'aac']}, # Fix: Force AAC audio for compatibility
             })
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
